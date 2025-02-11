@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Puerto Rico Travel Planner</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-ZmWiClcv1g_QJgI96CslsgeW-QcXLLQ&callback=initMap" async defer></script>
+</head>
+<body>
+    <h2>Puerto Rico Travel Planner</h2>
+    
+    <!-- Checkboxes to toggle visibility -->
+    <label>
+        <input type="checkbox" id="toggleLandmarks" checked> Show Landmarks
+    </label>
+    <label>
+        <input type="checkbox" id="toggleMunicipalities" checked> Show Municipalities
+    </label>
+    
+    <div id="map" style="width:100%; height:500px;"></div>
+
+    <script>
+        let map;
+        let landmarkMarkers = [];
+        let municipalityMarkers = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 8, // Adjusted zoom level
+                center: { lat: 18.2208, lng: -66.5901 } // Centered on Puerto Rico
+            });
+
+            // Fetching locations from Flask API
+            fetch('/get_locations')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.landmarks || !data.municipalities) {
+                        console.error("Invalid data format:", data);
+                        return;
+                    }
+
+                    // Store marker references
+                    createMarkers(data.landmarks, "http://maps.google.com/mapfiles/ms/icons/blue-dot.png", landmarkMarkers);
+                    createMarkers(data.municipalities, "http://maps.google.com/mapfiles/ms/icons/red-dot.png", municipalityMarkers);
+                })
+                .catch(error => console.error("Error fetching locations:", error));
+
+            // Add event listeners for checkboxes
+            document.getElementById("toggleLandmarks").addEventListener("change", toggleMarkers);
+            document.getElementById("toggleMunicipalities").addEventListener("change", toggleMarkers);
+        }
+
+        function createMarkers(locations, icon, markerArray) {
+            locations.forEach(location => {
+                let marker = new google.maps.Marker({
+                    position: { lat: location.lat, lng: location.lng },
+                    map: map,
+                    title: location.name,
+                    icon: icon
+                });
+                markerArray.push(marker);
+            });
+        }
+
+        function toggleMarkers() {
+            let showLandmarks = document.getElementById("toggleLandmarks").checked;
+            let showMunicipalities = document.getElementById("toggleMunicipalities").checked;
+
+            // Show or hide landmarks
+            landmarkMarkers.forEach(marker => marker.setMap(showLandmarks ? map : null));
+            
+            // Show or hide municipalities
+            municipalityMarkers.forEach(marker => marker.setMap(showMunicipalities ? map : null));
+        }
+    </script>
+</body>
+</html>
