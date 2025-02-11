@@ -1,0 +1,17 @@
+name: travel_planner
+source:
+  type: parquet
+  path: data.parquet
+  table: table_df
+description: el_mundo_dataset
+columns:
+- name: filename
+  type: string
+- name: text
+  type: string
+- name: text_length
+  type: integer
+- name: named_entities
+  type: string
+- name: normalized_text
+  type: string
