@@ -21,7 +21,7 @@
         #controls {
             width: 50%;
             padding: 20px;
-            overflow-y: auto; /* Allows scrolling if needed */
+            overflow-y: auto;
             background-color: #f4f4f4;
             display: flex;
             flex-direction: column;
@@ -46,6 +46,9 @@
         li {
             padding: 5px;
             border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         select, button {
@@ -53,6 +56,15 @@
             padding: 10px;
             margin-top: 10px;
             font-size: 16px;
+        }
+
+        .remove-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
         }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-ZmWiClcv1g_QJgI96CslsgeW-QcXLLQ&callback=initMap" async defer></script>
@@ -76,6 +88,12 @@
         <label for="start">Start:</label>
         <select id="start"></select>
 
+        <label for="waypoints">Waypoints (Stops):</label>
+        <select id="waypoints"></select>
+        <button onclick="addWaypoint()">Add Stop</button>
+
+        <ul id="waypoint-list"></ul> <!-- Waypoints List -->
+
         <label for="end">Destination:</label>
         <select id="end"></select>
 
@@ -94,6 +112,7 @@
         let landmarkMarkers = [];
         let municipalityMarkers = [];
         let locations = [];
+        let waypoints = []; // Stores user-selected waypoints
 
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
@@ -148,14 +167,37 @@
         function populateDropdowns(locations) {
             let startDropdown = document.getElementById("start");
             let endDropdown = document.getElementById("end");
+            let waypointsDropdown = document.getElementById("waypoints");
 
             locations.forEach(location => {
-                let option1 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
-                let option2 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
-
-                startDropdown.add(option1);
-                endDropdown.add(option2);
+                let option = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
+                startDropdown.add(option.cloneNode(true));
+                endDropdown.add(option.cloneNode(true));
+                waypointsDropdown.add(option);
             });
+        }
+
+        function addWaypoint() {
+            let waypoint = JSON.parse(document.getElementById("waypoints").value);
+            let waypointName = document.getElementById("waypoints").selectedOptions[0].text;
+
+            if (!waypoint || waypoints.length >= 8) {
+                alert("You can add up to 8 waypoints.");
+                return;
+            }
+
+            waypoints.push(waypoint);
+
+            let waypointList = document.getElementById("waypoint-list");
+            let listItem = document.createElement("li");
+            listItem.innerHTML = `${waypointName} <button class="remove-btn" onclick="removeWaypoint(${waypoints.length - 1})">X</button>`;
+            waypointList.appendChild(listItem);
+        }
+
+        function removeWaypoint(index) {
+            waypoints.splice(index, 1);
+            document.getElementById("waypoint-list").innerHTML = "";
+            waypoints.forEach((wp, i) => addWaypoint(wp, i)); // Rebuild list
         }
 
         function calculateRoute() {
@@ -170,34 +212,17 @@
             let request = {
                 origin: new google.maps.LatLng(start.lat, start.lng),
                 destination: new google.maps.LatLng(end.lat, end.lng),
+                waypoints: waypoints.map(wp => ({ location: new google.maps.LatLng(wp.lat, wp.lng), stopover: true })),
+                optimizeWaypoints: true,
                 travelMode: google.maps.TravelMode.DRIVING
             };
 
             directionsService.route(request, function(result, status) {
-                if (status == google.maps.DirectionsStatus.OK) {
+                if (status === google.maps.DirectionsStatus.OK) {
                     directionsRenderer.setDirections(result);
-                    let route = result.routes[0].legs[0];
-
-                    document.getElementById("travel-info").innerHTML = 
-                        `<strong>Travel Time:</strong> ${route.duration.text} <br> 
-                         <strong>Distance:</strong> ${route.distance.text}`;
-
-                    displayDirections(route.steps);
                 } else {
                     alert("Could not calculate route.");
                 }
-            });
-        }
-
-        function displayDirections(steps) {
-            let directionsList = document.getElementById("directions-list");
-            directionsList.innerHTML = ""; // Clear old directions
-
-            steps.forEach((step, index) => {
-                let listItem = document.createElement("li");
-                listItem.innerHTML = `<strong>Step ${index + 1}:</strong> ${step.instructions} <br>
-                                      <em>(${step.distance.text}, ${step.duration.text})</em>`;
-                directionsList.appendChild(listItem);
             });
         }
     </script>
