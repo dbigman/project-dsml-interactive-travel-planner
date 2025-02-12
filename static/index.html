@@ -127,15 +127,24 @@
 
         function createMarkers(locations, icon, markerArray) {
             locations.forEach(location => {
-                let marker = new google.maps.Marker({
-                    position: { lat: location.lat, lng: location.lng },
-                    map: map,
-                    title: location.name,
-                    icon: icon
-                });
-                markerArray.push(marker);
+            if (!location.coordinates || !location.coordinates.latitude || !location.coordinates.longitude) {
+                console.error("Invalid coordinates for:", location);
+                return;
+            }
+
+            let marker = new google.maps.Marker({
+                position: { 
+                    lat: location.coordinates.latitude, 
+                    lng: location.coordinates.longitude 
+                },
+                map: map,
+                title: location.name,
+                icon: icon
             });
-        }
+
+        markerArray.push(marker);
+    });
+}
 
         function toggleMarkers() {
             let showLandmarks = document.getElementById("toggleLandmarks").checked;
@@ -150,8 +159,15 @@
             let endDropdown = document.getElementById("end");
 
             locations.forEach(location => {
-                let option1 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
-                let option2 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
+                if (!location.coordinates) return;
+
+                let coordinates = JSON.stringify({
+                    lat: location.coordinates.latitude,
+                    lng: location.coordinates.longitude
+                });
+
+                let option1 = new Option(location.name, coordinates);
+                let option2 = new Option(location.name, coordinates);
 
                 startDropdown.add(option1);
                 endDropdown.add(option2);
