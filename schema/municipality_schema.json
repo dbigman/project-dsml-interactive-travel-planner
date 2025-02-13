@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MunicipalityData",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "etymology_and_nicknames": {
+        "type": "object",
+        "properties": {
+          "etymology": {
+            "type": "string"
+          },
+          "nicknames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "history": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "geography": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
+            }
+          },
+          "bodies_of_water": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "barrios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "demographics": {
+        "type": "object",
+        "properties": {
+          "population": {
+            "type": "integer"
+          },
+          "density": {
+            "type": "number"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "demonym": {
+            "type": "string"
+          }
+        }
+      },
+      "economy": {
+        "type": "object",
+        "properties": {
+          "agriculture": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "tourism": {
+            "type": "string"
+          }
+        }
+      },
+      "human_resources": {
+        "type": "object",
+        "properties": {
+          "education": {
+            "type": "string"
+          },
+          "public_health": {
+            "type": "string"
+          },
+          "public_safety": {
+            "type": "string"
+          }
+        }
+      },
+      "culture": {
+        "type": "object",
+        "properties": {
+          "festivals_and_events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "transportation": {
+        "type": "object",
+        "properties": {
+          "major_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "government": {
+        "type": "object",
+        "properties": {
+          "mayor": {
+            "type": "string"
+          },
+          "senatorial_district": {
+            "type": "string"
+          },
+          "representative_district": {
+            "type": "string"
+          }
+        }
+      },
+      "symbols": {
+        "type": "object",
+        "properties": {
+          "coat_of_arms": {
+            "type": "string"
+          },
+          "flag": {
+            "type": "string"
+          },
+          "anthem": {
+            "type": "string"
+          }
+        }
+      },
+      "notable_people": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
