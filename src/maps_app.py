@@ -16,6 +16,21 @@ if not GOOGLE_MAPS_API_KEY:
 
 # Load landmarks from JSON file
 def load_json_file(filename):
+    """Load landmarks from a JSON file.
+
+    This function attempts to open a specified JSON file and load its
+    contents into a Python object. If the file is not found, it logs an
+    error and returns an empty list. If there is an error in decoding the
+    JSON, it also logs an error and returns an empty list.
+
+    Args:
+        filename (str): The path to the JSON file to be loaded.
+
+    Returns:
+        list: The contents of the JSON file as a Python object, or an empty list if an
+            error occurs.
+    """
+
     try:
         with open(filename, "r", encoding="utf-8") as file:
             return json.load(file)
