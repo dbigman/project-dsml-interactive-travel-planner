@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import sys
 from icecream import ic
 
+ic.disable()
+
 # -------------------------
 # 1. Logging Setup
 # -------------------------
