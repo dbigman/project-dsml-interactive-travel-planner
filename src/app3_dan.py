@@ -10,6 +10,8 @@ import datetime
 import json
 from chromadb import Client
 
+ic.disable()
+
 # -------------------------
 # 1. Logging Setup
 # -------------------------

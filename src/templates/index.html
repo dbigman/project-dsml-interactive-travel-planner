@@ -48,7 +48,7 @@
             font-size: 16px;
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-ZmWiClcv1g_QJgI96CslsgeW-QcXLLQ&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
 </head>
 <body>
     <!-- Left Side: Map -->
@@ -161,17 +161,14 @@
             };
             directionsService.route(request, function(result, status) {
                 if (status === google.maps.DirectionsStatus.OK) {
-                    console.log(result);
-                } else {
-                    console.error("Directions request failed due to: " + status);
-                } {
                     directionsRenderer.setDirections(result);
                     let route = result.routes[0].legs[0];
                     document.getElementById("travel-info").innerHTML = 
                         `<strong>Travel Time:</strong> ${route.duration.text} <br> 
-                         <strong>Distance:</strong> ${route.distance.text}`;
+                        <strong>Distance:</strong> ${route.distance.text}`;
                     displayDirections(route.steps);
                 } else {
+                    console.error("Directions request failed due to: " + status);
                     alert("Could not calculate route.");
                 }
             });

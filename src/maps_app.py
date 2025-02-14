@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, render_template, send_from_directory
 import json
 import os
 import logging
@@ -55,13 +55,13 @@ def load_json_file(filename):
         logging.error(f"Error decoding JSON from {filename}")
         return []
 
-landmarks = load_json_file("../data/landmarks_corrected.json")
-municipalities = load_json_file("../data/municipalities_corrected.json")  
+# landmarks = load_json_file("../data/landmarks_corrected.json")
+# municipalities = load_json_file("../data/municipalities_corrected.json")  
 
-# landmarks = load_json_file("data/landmarks_corrected.json")
-# municipalities = load_json_file("data/municipalities_corrected.json")
+landmarks = load_json_file("data/landmarks_corrected.json")
+municipalities = load_json_file("data/municipalities_corrected.json")
+ic(municipalities)
 
-# ic(municipalities)
 @app.route('/get_locations', methods=['GET'])
 def get_locations():
     return jsonify({"landmarks": landmarks, "municipalities": municipalities})
@@ -70,11 +70,15 @@ def get_locations():
 # def serve_index():
 #     return send_from_directory("static", "index.html")
 
+# @app.route("/")
+# def serve_index():
+#     return send_from_directory(app.static_folder, "index.html")
+
+
 @app.route("/")
 def serve_index():
-    return send_from_directory(app.static_folder, "index.html")
-
-
+    # Render the template and pass the API key as a variable
+    return render_template("index.html", google_maps_api_key=GOOGLE_MAPS_API_KEY)
 
 if __name__ == '__main__':
     app.run(debug=True)
