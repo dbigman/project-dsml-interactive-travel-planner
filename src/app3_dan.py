@@ -131,6 +131,7 @@ def chat_with_llm(user_input):
         news_info = retrieve_relevant_info(user_input, news_collection)
         ic(news_info)
         context.append(news_info)
+        ic(context)
     
     combined_context_parts = []
     for docs in context:
@@ -153,7 +154,7 @@ def chat_with_llm(user_input):
             f"{user_input}\n\n"
             "Please answer using your travel planning expertise about Puerto Rico. "
         )
-        system_message = "You are a helpful travel planner assistant for Puerto Rico."
+        system_message = "You are a helpful travel planner assistant for Puerto Rico. Use only the provided context."
         logger.info("No context found, using general travel planning prompt.")
     else:
         prompt = (
@@ -161,16 +162,30 @@ def chat_with_llm(user_input):
             f"Context:\n{combined_context}\n\n"
             "Answer using only the provided context."
         )
-        system_message = "You are a helpful travel planner assistant. Use only the provided context."
+        system_message = "You are a helpful travel planner assistant for Puerto Rico. Use only the provided context."
     
     try:
+        ## reasoning model setup
+        # response = openai.chat.completions.create(
+        #     model="o3-mini-2025-01-31",
+        #     messages=[
+        #         {"role": "system", "content": system_message},
+        #         {"role": "user", "content": prompt}
+        #     ],
+        #     reasoning_effort='low'
+        
+        # chat model setup
         response = openai.chat.completions.create(
-            model="o3-mini-2025-01-31",
+            model="gpt-4o-2024-08-06",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            reasoning_effort='low'
+            temperature= 0.5, 
+            max_tokens=250,
+            top_p=1,
+            frequency_penalty=1,
+            presence_penalty=-1                         
         )
         model_reply = response.choices[0].message.content
         logger.info("Received model reply: " + model_reply)
@@ -193,29 +208,37 @@ if "messages" not in st.session_state:
         "role": "assistant", 
         "content": "Welcome to your Puerto Rico Travel Planner! How can I help you plan your trip today?"
     })
-    logger.info("Added introductory message to chat history.")
+    logger.info("Added intro msg to chat history.")
 
 col1, col2 = st.columns([3, 1])  # Chat on the left, logs on the right
 
-with col1:
-    # Display chat history
-    for msg in st.session_state.messages:
-        logger.info(f"Displaying message - Role: {msg['role']}, Content: {msg['content']}")
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+# with col1:
+#     # Display chat history
+#     for msg in st.session_state.messages:
+#         logger.info(f"Displaying message - Role: {msg['role']}, Content: {msg['content']}")
+#         with st.chat_message(msg["role"]):
+#             st.markdown(msg["content"])
 
-    # User input area
-    user_input = st.chat_input("Ask me anything about Puerto Rico...")
-    if user_input:
-        logger.info("User input received: " + user_input)
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        model_reply = chat_with_llm(user_input)
-        st.session_state.messages.append({"role": "assistant", "content": model_reply})
-        logger.info("Assistant reply appended to session state.")
-        with st.chat_message("assistant"):
-            st.markdown(model_reply)
+# Main chat area
+for msg in st.session_state.messages:
+    logger.info(f"Displaying message - Role: {msg['role']}, Content: {msg['content']}")
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-with col2:
+
+# User input area
+user_input = st.chat_input("Ask me anything about Puerto Rico...")
+if user_input:
+    logger.info("User input received: " + user_input)
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    model_reply = chat_with_llm(user_input)
+    st.session_state.messages.append({"role": "assistant", "content": model_reply})
+    logger.info("Assistant reply appended to session state.")
+    with st.chat_message("assistant"):
+        st.markdown(model_reply)
+
+# Sidebar for chat logs
+with st.sidebar:
     st.markdown("### Chat Logs")
     with st.expander("View Chat Logs", expanded=True):
         try:
