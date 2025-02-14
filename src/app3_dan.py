@@ -1,30 +1,21 @@
-import streamlit as st
-import subprocess
-import time
-import openai
-import os
-import logging
-import sys
-from dotenv import load_dotenv
-import json
-import datetime
-from icecream import ic
 import chromadb
+import openai
+from dotenv import load_dotenv
+import logging
+from icecream import ic
+import os
+import sys
+import streamlit as st
+import datetime
+import json
+from chromadb import Client
 import streamlit.components.v1 as components
-
-
-
-# -------------------------------------------------------------------
-# 1. Start the Flask server as a background process
-# -------------------------------------------------------------------
-flask_process = subprocess.Popen(["python", "maps_app.py"])
-time.sleep(2)  # Give the Flask server a moment to start up
 
 ic.disable()
 
-# -------------------------------------------------------------------
-# 2. Logging Setup
-# -------------------------------------------------------------------
+# -------------------------
+# 1. Logging Setup
+# -------------------------
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 if logger.hasHandlers():
@@ -34,31 +25,29 @@ file_handler = logging.FileHandler("chatbot_correction.log", encoding="utf-8")
 file_handler.setLevel(logging.INFO)
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 logger.info("Logging initialized.")
 
-# -------------------------------------------------------------------
-# 3. Load Environment Variables & Setup OpenAI
-# -------------------------------------------------------------------
+# -------------------------
+# 2. Load Environment Variables & Setup OpenAI
+# -------------------------
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     logger.error("OpenAI API key is missing! Check your .env file.")
     raise ValueError("OpenAI API key not found.")
-
+logger.info("OpenAI API key loaded successfully.")
 openai.api_key = openai_api_key
-openai.api_type = "openai"
+openai.api_type = "openai"  # Set to "azure" if you are using Azure OpenAI
 logger.info("OpenAI configuration set. API type: openai.")
 
-# -------------------------------------------------------------------
-# 4. Setup a Single ChromaDB Client and Load Collections
-# -------------------------------------------------------------------
+# -------------------------
+# 3. Setup a Single ChromaDB Client and Load Collections
+# -------------------------
 client = chromadb.PersistentClient(path="../chromadb")
 logger.info("ChromaDB client initialized.")
 
@@ -76,20 +65,37 @@ municipalities_collection = load_chromadb_collection(client, "municipalities")
 news_collection = load_chromadb_collection(client, "news_articles")
 landmarks_collection = load_chromadb_collection(client, "landmarks")
 
-# Quick check
+if municipalities_collection is None:
+    logger.error("ERROR: municipalities_collection failed to load.")
+else:
+    logger.info("SUCCESS: municipalities_collection loaded successfully.")
+
+if news_collection is None:
+    logger.error("ERROR: news_collection failed to load.")
+else:
+    logger.info("SUCCESS: news_collection loaded successfully.")
+
+if landmarks_collection is None:
+    logger.error("ERROR: landmarks_collection failed to load.")
+else:
+    logger.info("SUCCESS: landmarks_collection loaded successfully.")
+
 if news_collection:
     docs = news_collection.get()
     ic(f"Documents in collection 'news_articles':", docs)
 
-# -------------------------------------------------------------------
-# 5. Helper Functions for Retrieval and Chat
-# -------------------------------------------------------------------
+# -------------------------
+# 4. Retrieve Relevant Information from Collections
+# -------------------------
 def retrieve_relevant_info(query, collection):
     logger.info(f"Querying collection for query: {query}")
     results = collection.query(query_texts=[query], n_results=3)
     logger.info(f"Query results: {results}")
     return results
 
+# -------------------------
+# 5. Chat Function with Retrieval-Augmented Generation (RAG)
+# -------------------------
 def log_chat(user_input, model_reply):
     chat_data = {
         "timestamp": datetime.datetime.now().isoformat(),
@@ -107,7 +113,6 @@ def chat_with_llm(user_input):
     logger.info(f"Processing user input: {user_input}")
     context = []
     
-    # Retrieve context from each collection
     if municipalities_collection:
         municipalities_info = retrieve_relevant_info(user_input, municipalities_collection)
         ic(municipalities_info)
@@ -126,7 +131,6 @@ def chat_with_llm(user_input):
     for docs in context:
         if docs and "documents" in docs:
             logger.info("docs['documents'] content: " + str(docs["documents"]))
-            # Flatten if needed (some versions of ChromaDB return a list-of-lists)
             if isinstance(docs["documents"], list) and docs["documents"]:
                 sublist = docs["documents"][0]
                 for doc in sublist:
@@ -136,23 +140,15 @@ def chat_with_llm(user_input):
                 for doc in docs["documents"]:
                     if doc:
                         combined_context_parts.append(str(doc))
-
     combined_context = "\n".join(combined_context_parts)
     logger.info("Combined context after processing: " + combined_context)
     
     if combined_context.strip() == "":
         prompt = (
-            f"""{user_input}\n\n
-            Please answer using your travel planning expertise about Puerto Rico. When a location is mentioned, 
-            provide a bullet list of landmarks with their GPS coordinates. 
-            """
+            f"{user_input}\n\n"
+            "Please answer using your travel planning expertise about Puerto Rico. "
         )
-        system_message = """
-        You are a helpful travel planner assistant for Puerto Rico. Use only the provided context.
-        The end result of a successful interaction with an interested user should be a list of landmarks
-        of interest for the user. The list of landmarks should include gps coordinates and a brief description. 
-        """
-        
+        system_message = "You are a helpful travel planner assistant for Puerto Rico. Use only the provided context."
         logger.info("No context found, using general travel planning prompt.")
     else:
         prompt = (
@@ -169,11 +165,11 @@ def chat_with_llm(user_input):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.5,
-            max_completion_tokens=250,
+            temperature=0.5, 
+            max_tokens=250,
             top_p=1,
             frequency_penalty=1,
-            presence_penalty=-1
+            presence_penalty=-1                         
         )
         model_reply = response.choices[0].message.content
         logger.info("Received model reply: " + model_reply)
@@ -188,7 +184,9 @@ def chat_with_llm(user_input):
 # 6. Streamlit UI Setup
 # -------------------------------------------------------------------
 
-# Initialize chat session
+st.set_page_config(layout="wide")
+
+# Initialize chat session if not already initialized
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({
@@ -197,51 +195,21 @@ if "messages" not in st.session_state:
     })
     logger.info("Added intro msg to chat history.")
 
-# Define three columns: left, center, right
-# col_left, col_center, col_right = st.columns([1, 3, 1])
-# Define three columns: left, center, right
+# Center column split vertically into two containers: map on top, chatbot below.
+with st.container():
+    st.markdown("**Interactive Map**")
+    components.iframe("http://localhost:5000", height=200, width=900, scrolling=True)
 
-st.set_page_config(layout="wide")
-col_left, col_center, col_right = st.columns([1, 4, 1])
+st.markdown("---")  # Horizontal divider between map and chatbot
 
-with col_left:
-    st.write("")
-
-# -------------------------
-# Center Column with Chat
-# -------------------------
-with col_center:
-    # Inject CSS for a scrollable chat area with the input pinned at the bottom.
-    st.markdown(
-        """
-        <style>
-        /* Container that holds messages + input */
-        /* Remove padding from main block */
-        .main .block-container {
-            padding-top: 0rem;
-            padding-bottom: 0rem;
-        }
-            .chat-messages {
-                max-height: 100vh;
-                overflow-y: auto;
-                margin-bottom: 0rem;
-            }
-        </style>
-        <div class="center-column">
-        <div class="chat-messages">
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Show existing chat messages in the scrollable area
+with st.container():
+    st.markdown("**Chatbot Interface**")
+    # Display existing chat messages
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-
-    # Close the chat-messages div
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Now place the chat input, which stays visually at bottom
+    
+    # Chat input widget
     user_input = st.chat_input("Ask me anything about Puerto Rico...")
     if user_input:
         logger.info("User input received: " + user_input)
@@ -249,24 +217,10 @@ with col_center:
         model_reply = chat_with_llm(user_input)
         st.session_state.messages.append({"role": "assistant", "content": model_reply})
         logger.info("Assistant reply appended to session state.")
-        # Immediately display the model's response so user sees it
         with st.chat_message("assistant"):
             st.markdown(model_reply)
 
-    # Close the center-column container
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# -------------------------
-# Right Column with Map
-# -------------------------
-with col_right:
-    # You can label it if you like:
-    st.write("**Interactive Map**")
-    components.iframe("http://localhost:5000", height=400, width=300, scrolling=True)
-
-# -------------------------
-# Sidebar for Chat Logs
-# -------------------------
+# Sidebar for chat logs
 with st.sidebar:
     st.markdown("### Chat Logs")
     with st.expander("View Chat Logs", expanded=True):
