@@ -10,7 +10,6 @@ import datetime
 import json
 from chromadb import Client
 
-
 # -------------------------
 # 1. Logging Setup
 # -------------------------
@@ -19,9 +18,7 @@ logger.setLevel(logging.INFO)
 if logger.hasHandlers():
     logger.handlers.clear()
 
-# file_handler = logging.FileHandler("chatbot_correction.log")
 file_handler = logging.FileHandler("chatbot_correction.log", encoding="utf-8")
-
 file_handler.setLevel(logging.INFO)
 
 console_handler = logging.StreamHandler(sys.stdout)
@@ -50,12 +47,11 @@ openai.api_type = "openai"  # Set to "azure" if you are using Azure OpenAI
 logger.info("OpenAI configuration set. API type: openai.")
 
 # -------------------------
-# 3. Setup ChromaDB Clients (Paths adjusted for file in src folder)
+# 3. Setup a Single ChromaDB Client and Load Collections
 # -------------------------
-news_client = chromadb.PersistentClient(path="../chromadb")
-municipalities_client = chromadb.PersistentClient(path="../chromadb/chromadb_municipalities")
-landmarks_client = chromadb.PersistentClient(path="../chromadb/chromadb_landmarks")
-logger.info("ChromaDB clients initialized.")
+# Create a single persistent client pointing to the main ChromaDB directory.
+client = chromadb.PersistentClient(path="../chromadb")
+logger.info("ChromaDB client initialized.")
 
 def load_chromadb_collection(client, collection_name):
     logger.info(f"Attempting to load collection: {collection_name}")
@@ -67,43 +63,31 @@ def load_chromadb_collection(client, collection_name):
         logger.error(f"ERROR: loading collection {collection_name}: {e}")
         return None
 
+# Load all three collections using the same client
+municipalities_collection = load_chromadb_collection(client, "municipalities")
+news_collection = load_chromadb_collection(client, "news_articles")
+landmarks_collection = load_chromadb_collection(client, "landmarks")
 
-# Este esta funcionando
-municipalities_collection = load_chromadb_collection(municipalities_client, "municipalities")
+# Debugging statements to verify collections
+if municipalities_collection is None:
+    logger.error("ERROR: municipalities_collection failed to load.")
+else:
+    logger.info("SUCCESS: municipalities_collection loaded successfully.")
 
-# BUG REPORT: The following line is causing an error. 
-# The collection is not being loaded.
-news_collection = load_chromadb_collection(news_client, "news_articles")
-landmarks_collection = load_chromadb_collection(landmarks_client, "landmarks")
-
-# Debugging Statements
 if news_collection is None:
     logger.error("ERROR: news_collection failed to load.")
 else:
     logger.info("SUCCESS: news_collection loaded successfully.")
 
-if municipalities_collection is None:
-    logger.error("ERROR: municipalities_collection failed to load.")
-else:
-    logger.info("SUCCESS: municipalities_collection loaded successfully.")
-    
 if landmarks_collection is None:
     logger.error("ERROR: landmarks_collection failed to load.")
 else:
     logger.info("SUCCESS: landmarks_collection loaded successfully.")
 
-
-# inspecting news_collection
-# Initialize ChromaDB client
-client = Client()
-
-collection = client.get_collection("news_articles")
-docs = collection.get()
-ic(f"Documents in collection 'your_collection_name':", docs)
-
-
-
-
+# Quick test: Retrieve and log documents from the news_articles collection
+if news_collection:
+    docs = news_collection.get()
+    ic(f"Documents in collection 'news_articles':", docs)
 
 # -------------------------
 # 4. Retrieve Relevant Information from Collections
@@ -117,7 +101,6 @@ def retrieve_relevant_info(query, collection):
 # -------------------------
 # 5. Chat Function with Retrieval-Augmented Generation (RAG)
 # -------------------------
-# Function to log chat history for analysis
 def log_chat(user_input, model_reply):
     chat_data = {
         "timestamp": datetime.datetime.now().isoformat(),
@@ -222,7 +205,7 @@ with col1:
             st.markdown(msg["content"])
 
     # User input area
-    user_input = st.chat_input("Ask me anything about your Puerto Rico trip...")
+    user_input = st.chat_input("Ask me anything about Puerto Rico...")
     if user_input:
         logger.info("User input received: " + user_input)
         st.session_state.messages.append({"role": "user", "content": user_input})
@@ -234,7 +217,7 @@ with col1:
 
 with col2:
     st.markdown("### Chat Logs")
-    with st.expander("📜 View Chat Logs", expanded=True):
+    with st.expander("View Chat Logs", expanded=True):
         try:
             if os.path.exists("chat_logs.jsonl"):
                 with open("chat_logs.jsonl", "r", encoding="utf-8") as log_file:
