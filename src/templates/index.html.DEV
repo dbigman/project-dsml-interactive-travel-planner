@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Puerto Rico Travel Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh; /* Full screen height */
+        }
+
+        /* Left side: Map */
+        #map-container {
+            width: 50%;
+            height: 100vh;
+        }
+
+        /* Right side: User Inputs */
+        #controls {
+            width: 50%;
+            padding: 20px;
+            overflow-y: auto; /* Allows scrolling if needed */
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        #travel-info {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-ZmWiClcv1g_QJgI96CslsgeW-QcXLLQ&callback=initMap" async defer></script>
+</head>
+<body>
+    
+    <!-- Left Side: Map -->
+    <div id="map-container">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
+
+    <!-- Right Side: Controls -->
+    <div id="controls">
+        <h2>Puerto Rico Travel Planner</h2>
+
+        <!-- Checkboxes to toggle visibility -->
+        <label><input type="checkbox" id="toggleLandmarks" checked> Show Landmarks</label>
+        <label><input type="checkbox" id="toggleMunicipalities" checked> Show Municipalities</label>
+
+        <!-- Dropdowns for route selection -->
+        <label for="start">Start:</label>
+        <select id="start"></select>
+
+        <label for="end">Destination:</label>
+        <select id="end"></select>
+
+        <button onclick="calculateRoute()">Get Route</button>
+
+        <div id="travel-info"></div> <!-- Travel Time & Distance -->
+
+        <h3>Turn-by-Turn Directions</h3>
+        <ul id="directions-list"></ul> <!-- Directions List -->
+    </div>
+
+    <script>
+        let map;
+        let directionsService;
+        let directionsRenderer;
+        let landmarkMarkers = [];
+        let municipalityMarkers = [];
+        let locations = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 8,
+                center: { lat: 18.2208, lng: -66.5901 }
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: true });
+            directionsRenderer.setMap(map);
+
+            fetch('/get_locations')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.landmarks || !data.municipalities) {
+                        console.error("Invalid data format:", data);
+                        return;
+                    }
+
+                    locations = [...data.landmarks, ...data.municipalities]; // Combine for dropdowns
+                    populateDropdowns(locations);
+
+                    createMarkers(data.landmarks, "http://maps.google.com/mapfiles/ms/icons/blue-dot.png", landmarkMarkers);
+                    createMarkers(data.municipalities, "http://maps.google.com/mapfiles/ms/icons/red-dot.png", municipalityMarkers);
+                })
+                .catch(error => console.error("Error fetching locations:", error));
+
+            document.getElementById("toggleLandmarks").addEventListener("change", toggleMarkers);
+            document.getElementById("toggleMunicipalities").addEventListener("change", toggleMarkers);
+        }
+
+        function createMarkers(locations, icon, markerArray) {
+            locations.forEach(location => {
+                let marker = new google.maps.Marker({
+                    position: { lat: location.lat, lng: location.lng },
+                    map: map,
+                    title: location.name,
+                    icon: icon
+                });
+                markerArray.push(marker);
+            });
+        }
+
+        function toggleMarkers() {
+            let showLandmarks = document.getElementById("toggleLandmarks").checked;
+            let showMunicipalities = document.getElementById("toggleMunicipalities").checked;
+
+            landmarkMarkers.forEach(marker => marker.setMap(showLandmarks ? map : null));
+            municipalityMarkers.forEach(marker => marker.setMap(showMunicipalities ? map : null));
+        }
+
+        function populateDropdowns(locations) {
+            let startDropdown = document.getElementById("start");
+            let endDropdown = document.getElementById("end");
+
+            locations.forEach(location => {
+                let option1 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
+                let option2 = new Option(location.name, JSON.stringify({lat: location.lat, lng: location.lng}));
+
+                startDropdown.add(option1);
+                endDropdown.add(option2);
+            });
+        }
+
+        function calculateRoute() {
+            let start = JSON.parse(document.getElementById("start").value);
+            let end = JSON.parse(document.getElementById("end").value);
+
+            if (!start || !end) {
+                alert("Please select a start and destination.");
+                return;
+            }
+
+            let request = {
+                origin: new google.maps.LatLng(start.lat, start.lng),
+                destination: new google.maps.LatLng(end.lat, end.lng),
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, function(result, status) {
+                if (status == google.maps.DirectionsStatus.OK) {
+                    directionsRenderer.setDirections(result);
+
+
+
+
+
+                    let route = result.routes[0].legs[0];
+
+                    document.getElementById("travel-info").innerHTML = 
+                        `<strong>Travel Time:</strong> ${route.duration.text} <br> 
+                         <strong>Distance:</strong> ${route.distance.text}`;
+
+                    displayDirections(route.steps);
+                } else {
+                    console.error("Directions API error:", status);
+                    alert("Could not calculate route.");
+                }
+            });
+        }
+
+        function displayDirections(steps) {
+            let directionsList = document.getElementById("directions-list");
+            directionsList.innerHTML = ""; // Clear old directions
+
+            steps.forEach((step, index) => {
+                let listItem = document.createElement("li");
+                listItem.innerHTML = `<strong>Step ${index + 1}:</strong> ${step.instructions} <br>
+                                      <em>(${step.distance.text}, ${step.duration.text})</em>`;
+                directionsList.appendChild(listItem);
+            });
+        }
+    </script>
+
+</body>
+</html>

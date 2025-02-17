@@ -9,6 +9,7 @@ import streamlit as st
 import datetime
 import json
 from chromadb import Client
+# from chromadb import PresistentClient
 import streamlit.components.v1 as components
 
 ic.disable()
@@ -184,7 +185,7 @@ def chat_with_llm(user_input):
 # 6. Streamlit UI Setup
 # -------------------------------------------------------------------
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Puerto Rico Travel Planner", layout="wide")
 
 # Initialize chat session if not already initialized
 if "messages" not in st.session_state:
